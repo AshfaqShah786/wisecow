@@ -24,7 +24,7 @@ jobs:
 
       - uses: azure/setup-kubectl@v4
         with:
-          version: '1.30.0'
+          version: 'latest'
 
       - run: |
           echo "${{ secrets.KUBECONFIG }}" | base64 --decode > kubeconfig
