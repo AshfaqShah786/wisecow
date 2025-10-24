@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# Add /usr/games to PATH so cowsay and fortune are found
+export PATH=$PATH:/usr/games
+
 SRVPORT=4499
 RSPFILE=response
 
