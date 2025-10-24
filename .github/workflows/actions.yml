@@ -30,11 +30,12 @@ jobs:
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/wisecow:latest
 
-      #  Setup kubectl
+       #  Setup kubectl
       - name: Setup kubectl
-        uses: actions/setup-kubectl@v3
+        uses: azure/setup-kubectl@v4
         with:
           version: 'latest'
+
 
       #  Configure kubeconfig from secret
       - name: Configure Kubeconfig
