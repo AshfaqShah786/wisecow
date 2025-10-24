@@ -26,8 +26,18 @@ jobs:
         with:
           version: 'latest'
 
-      - run: |
-          echo "${{ secrets.KUBECONFIG }}" | base64 --decode > kubeconfig
+      
+      # Configure kubeconfig from secret
+      - name: Configure Kubeconfig
+        run: |
+          echo "${{ secrets.KUBECONFIG_DATA }}" | base64 --decode > kubeconfig
           export KUBECONFIG=$PWD/kubeconfig
-          kubectl set image deployment/wisecow wisecow=${{ secrets.DOCKERHUB_USERNAME }}/wisecow:latest
+          kubectl cluster-info
+
+      # Deploy to Kubernetes
+      - name: Deploy Wisecow to Kubernetes
+        run: |
+          export KUBECONFIG=$PWD/kubeconfig
+          kubectl set image deployment/wisecow wisecow=${{ secrets.DOCKERHUB_USERNAME }}/wisecow:latest --record || \
+          kubectl apply -f k8s/
 
