@@ -1,63 +1,56 @@
-name: wisecow
+name: Wisecow CI/CD
 
 on:
   push:
     branches: [ main ]
   workflow_dispatch:
 
-env:
-  # Update these environment variables as needed
-  REGISTRY_DOMAIN: ghcr.io
-  IMAGE: ${{ env.REGISTRY_DOMAIN }}/<OWNER>/wisecow
-
 jobs:
-  build-and-push:
+  deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      # Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
-
-      - name: Set up Docker Buildx
+      # Setup Docker Buildx
+      - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      - name: Login to registry
+      # Login to Docker registry
+      - name: Docker Login
         uses: docker/login-action@v2
         with:
-          registry: ${{ env.REGISTRY_DOMAIN }}
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_TOKEN }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push Docker image
+      # Build & push Docker image
+      - name: Build and Push Docker Image
         uses: docker/build-push-action@v4
         with:
           push: true
-          tags: ${{ env.IMAGE }}:latest
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/wisecow:latest
 
-  deploy-to-k8s:
-    needs: build-and-push
-    runs-on: ubuntu-latest
-    if: ${{ secrets.KUBECONFIG_DATA != '' }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
+      # Setup kubectl
       - name: Setup kubectl
         uses: azure/setup-kubectl@v4
         with:
           version: 'latest'
 
-      - name: Decode KUBECONFIG
+      # Configure kubeconfig from secret (if you want to deploy)
+      - name: Configure Kubeconfig
+        if: ${{ secrets.KUBECONFIG_DATA != '' }}
         run: |
           mkdir -p $HOME/.kube
-          echo "${{ secrets.KUBE_CONFIG_DATA }}" | base64 --decode > $HOME/.kube/config
+          echo "${{ secrets.KUBECONFIG_DATA }}" | base64 --decode > $HOME/.kube/config
+          export KUBECONFIG=$HOME/.kube/config
+          kubectl cluster-info || echo "Skipping cluster-info, may be local build only"
 
-      - name: Deploy Wisecow to Kubernetes
+      # Deploy Wisecow to Kubernetes (optional, if KUBECONFIG is provided)
+      - name: Deploy Wisecow
+        if: ${{ secrets.KUBECONFIG_DATA != '' }}
         run: |
-          kubectl set image deployment/wisecow wisecow=${{ env.IMAGE }}:latest --record || true
-          kubectl apply -f k8s/service.yaml
-          kubectl apply -f k8s/deployment.yaml
-          kubectl apply -f k8s/ingress.yaml || true
+          export KUBECONFIG=$HOME/.kube/config
+          kubectl set image deployment/wisecow wisecow=${{ secrets.DOCKERHUB_USERNAME }}/wisecow:latest --record || \
+          kubectl apply -f k8s/
 
