@@ -36,12 +36,17 @@ jobs:
         with:
           version: 'latest'
 
-      # Configure kubeconfig from secret
-      - name: Configure Kubeconfig
-        run: |
-          echo "${{ secrets.KUBECONFIG_DATA }}" | base64 --decode > kubeconfig
-          export KUBECONFIG=$PWD/kubeconfig
-          kubectl cluster-info || echo "Cluster not accessible"
+      # Configure kubeconfig from secret (DEBUG - REMOVE AFTER FIX)
+      - name: Configure Kubeconfig
+        run: |
+          KUBE_SECRET="${{ secrets.KUBECONFIG_DATA }}"
+          if [ -z "$KUBE_SECRET" ]; then
+            echo "Error: KUBECONFIG_DATA secret is empty!"
+            exit 1
+          fi
+          echo "$KUBE_SECRET" | base64 --decode > kubeconfig # This line might still fail if content is wrong
+          export KUBECONFIG=$PWD/kubeconfig
+          kubectl cluster-info || echo "Cluster not accessible"
 
       # Deploy Wisecow to Kubernetes
       - name: Deploy Wisecow
