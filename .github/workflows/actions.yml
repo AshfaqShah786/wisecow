@@ -1,8 +1,8 @@
-name: CI/CD - Build, Push & Deploy
+name: wisecow
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main ]
   workflow_dispatch:
 
 env:
