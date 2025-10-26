@@ -2,7 +2,7 @@
 
 # Wisecow Kubernetes Deployment – Step by Step
 
-1. **Start Minikube and set Docker environment
+1. **Start Minikube and set Docker environment**
 
         minikube start --driver=docker
         eval $(minikube docker-env)
