@@ -1,36 +1,40 @@
-#!/usr/bin/env bash
+#!/bin/bash
 set -e
 
-APP_HOST="wisecow.local"
-TLS_SECRET="wisecow-tls"
+echo "🚀 Starting Wisecow CI/CD deployment..."
 
-echo "Building Docker image inside Minikube..."
+# 1️⃣ Use Minikube's Docker daemon
+echo "➡️ Setting Docker to use Minikube's daemon..."
 eval $(minikube docker-env)
-docker build -t wisecow:latest .
 
-echo "Deploying Wisecow app..."
+# 2️⃣ Build Docker image
+IMAGE_NAME="ashfaqs96/wisecow:latest"
+echo "➡️ Building Docker image: $IMAGE_NAME ..."
+docker build -t $IMAGE_NAME .
+
+# 3️⃣ Apply TLS secret
+TLS_SECRET_NAME="wisecow-tls"
+if kubectl get secret $TLS_SECRET_NAME -n default &> /dev/null; then
+  echo "➡️ TLS secret $TLS_SECRET_NAME already exists, updating..."
+  kubectl delete secret $TLS_SECRET_NAME -n default
+fi
+
+echo "➡️ Creating TLS secret..."
+kubectl create secret tls $TLS_SECRET_NAME \
+  --cert=wisecow.crt --key=wisecow.key \
+  -n default
+
+# 4️⃣ Apply Kubernetes manifests
+echo "➡️ Applying Deployment, Service, and Ingress..."
 kubectl apply -f k8s/deployment.yaml
 kubectl apply -f k8s/service.yaml
-
-echo "Enabling ingress..."
-minikube addons enable ingress || true
-
-echo "Creating TLS certificate..."
-openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-  -keyout tls.key -out tls.crt -subj "/CN=${APP_HOST}/O=${APP_HOST}"
-kubectl create secret tls ${TLS_SECRET} --cert=tls.crt --key=tls.key --dry-run=client -o yaml | kubectl apply -f -
-
-echo "Applying ingress..."
 kubectl apply -f k8s/ingress.yaml
 
-echo "Mapping hostname..."
-MINIKUBE_IP=$(minikube ip)
-echo "${MINIKUBE_IP} ${APP_HOST}" | sudo tee -a /etc/hosts
+# 5️⃣ Wait for deployment rollout
+echo "➡️ Waiting for deployment rollout..."
+kubectl rollout status deployment/wisecow -n default
 
-echo "Checking deployment..."
-kubectl get pods
-kubectl get svc
-kubectl get ingress
-
-echo "Visit: https://${APP_HOST} (accept the self-signed cert warning)"
+# 6️⃣ Done
+echo "✅ Wisecow app successfully deployed on Minikube!"
+echo "Access it via: https://wisecow.local (use --insecure with curl if using self-signed cert)"
 
