@@ -1,28 +1,78 @@
-# Cow wisdom web server
 
-## Prerequisites
 
-```
-sudo apt install fortune-mod cowsay -y
-```
+# Wisecow Kubernetes Deployment – Step by Step
 
-## How to use?
+1. **Start Minikube and set Docker environment
 
-1. Run `./wisecow.sh`
-2. Point the browser to server port (default 4499)
+        minikube start --driver=docker
+        eval $(minikube docker-env)
 
-## What to expect?
-![wisecow](https://github.com/nyrahul/wisecow/assets/9133227/8d6bfde3-4a5a-480e-8d55-3fef60300d98)
 
-# Problem Statement
-Deploy the wisecow application as a k8s app
+2. **Build Docker image for Wisecow**
 
-## Requirement
-1. Create Dockerfile for the image and corresponding k8s manifest to deploy in k8s env. The wisecow service should be exposed as k8s service.
-2. Github action for creating new image when changes are made to this repo
-3. [Challenge goal]: Enable secure TLS communication for the wisecow app.
+        docker build -t yourusername/wisecow:latest .
 
-## Expected Artifacts
-1. Github repo containing the app with corresponding dockerfile, k8s manifest, any other artifacts needed.
-2. Github repo with corresponding github action.
-3. Github repo should be kept private and the access should be enabled for following github IDs: nyrahul
+
+3. **Login and push Docker image to Docker Hub**
+
+
+        docker login
+        docker push yourusername/wisecow:latest
+
+
+4. **Create TLS secret for secure communication**
+
+
+        kubectl delete secret wisecow-tls -n default 2>/dev/null || true
+        kubectl create secret tls wisecow-tls \
+        --cert=wisecow.crt --key=wisecow.key -n default
+
+
+5. **Apply Kubernetes manifests**
+
+
+        kubectl apply -f k8s/deployment.yaml
+        kubectl apply -f k8s/service.yaml
+        kubectl apply -f k8s/ingress.yaml
+
+
+6. **Wait for the deployment rollout to complete**
+
+
+        kubectl rollout status deployment/wisecow -n default
+
+
+7. **Verify deployed resources**
+
+
+        kubectl get pods,svc,ingress -n default
+
+
+8. **Access Wisecow application**
+
+        curl https://wisecow.local --insecure
+
+
+9. **Run system health monitoring script**
+
+
+        ./system_health.sh
+        tail -n 20 system_health.log
+
+
+10. **Check application health using Python script**
+
+
+        python3 app_health_checker.py
+
+
+11. **cleanup**
+
+
+        kubectl delete -f k8s/ingress.yaml
+        kubectl delete -f k8s/service.yaml
+        kubectl delete -f k8s/deployment.yaml
+        kubectl delete secret wisecow-tls -n default
+        minikube stop
+
+
